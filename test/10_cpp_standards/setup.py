@@ -8,14 +8,15 @@ from setuptools import (
 
 standard = os.environ["STANDARD"]
 
-language_standard = "/std:c++" + standard if platform.system() == "Windows" else "-std=c++" + standard
+if platform.system() == 'Windows':
+    extra_compile_args = ["/std:c++" + standard, '/DSTANDARD' + standard]
 
-extra_compile_args = [language_standard, "-DSTANDARD=" + standard]
-
-if standard == "17":
-    if platform.system() == "Windows":
+    if standard == '17':
         extra_compile_args.append("/wd5033")
-    else:
+else:
+    extra_compile_args = ["-std=c++" + standard, "-DSTANDARD=" + standard]
+    
+    if standard == "17":
         extra_compile_args.append("-Wno-register")
 
 setup(
