@@ -9,7 +9,7 @@ from setuptools import (
 standard = os.environ["STANDARD"]
 
 if platform.system() == 'Windows':
-    extra_compile_args = ["/std:c++" + standard, '/DSTANDARD' + standard]
+    extra_compile_args = ["/std:c++" + standard, '/DSTANDARD=' + standard]
 
     if standard == '17':
         extra_compile_args.append("/wd5033")
