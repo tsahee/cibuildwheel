@@ -137,6 +137,7 @@ def main() -> None:
     test_requires = get_option_from_environment('CIBW_TEST_REQUIRES', platform=platform, default='').split()
     test_extras = get_option_from_environment('CIBW_TEST_EXTRAS', platform=platform, default='')
     build_verbosity_str = get_option_from_environment('CIBW_BUILD_VERBOSITY', platform=platform, default='')
+    docker_machine_arch = get_option_from_environment('CIBW_DOCKER_MACHINES', platform=platform, default='AUTO')
 
     build_selector = BuildSelector(build_config, skip_config)
 
@@ -220,6 +221,7 @@ def main() -> None:
         environment=environment,
         dependency_constraints=dependency_constraints,
         manylinux_images=manylinux_images,
+        docker_machine_arch=docker_machine_arch,
     )
 
     # Python is buffering by default when running on the CI platforms, giving problems interleaving subprocess call output with unflushed calls to 'print'

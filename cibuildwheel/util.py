@@ -123,6 +123,7 @@ class BuildOptions(NamedTuple):
     test_requires: List[str]
     test_extras: str
     build_verbosity: int
+    docker_machine_arch: Optional[str]
 
 
 resources_dir = Path(__file__).resolve().parent / 'resources'

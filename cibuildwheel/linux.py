@@ -11,27 +11,6 @@ from .util import (BuildOptions, BuildSelector, NonPlatformWheelError,
                    get_build_verbosity_extra_flags, prepare_command)
 
 
-def matches_platform(identifier: str) -> bool:
-    pm = platform.machine()
-    if pm == "x86_64":
-        # x86_64 machines can run i686 docker containers
-        if identifier.endswith('x86_64') or identifier.endswith('i686'):
-            return True
-    elif pm == "i686":
-        if identifier.endswith('i686'):
-            return True
-    elif pm == "aarch64":
-        if identifier.endswith('aarch64'):
-            return True
-    elif pm == "ppc64le":
-        if identifier.endswith('ppc64le'):
-            return True
-    elif pm == "s390x":
-        if identifier.endswith('s390x'):
-            return True
-    return False
-
-
 class PythonConfiguration(NamedTuple):
     version: str
     identifier: str
@@ -42,7 +21,7 @@ class PythonConfiguration(NamedTuple):
         return PurePath(self.path_str)
 
 
-def get_python_configurations(build_selector: BuildSelector) -> List[PythonConfiguration]:
+def get_python_configurations(build_selector: BuildSelector, docker_arch_list: List[str]) -> List[PythonConfiguration]:
     python_configurations = [
         PythonConfiguration(version='2.7', identifier='cp27-manylinux_x86_64', path_str='/opt/python/cp27-cp27m'),
         PythonConfiguration(version='2.7', identifier='cp27-manylinux_x86_64', path_str='/opt/python/cp27-cp27mu'),
@@ -77,7 +56,11 @@ def get_python_configurations(build_selector: BuildSelector) -> List[PythonConfi
         PythonConfiguration(version='3.9', identifier='cp39-manylinux_s390x', path_str='/opt/python/cp39-cp39'),
     ]
     # skip builds as required
-    return [c for c in python_configurations if matches_platform(c.identifier) and build_selector(c.identifier)]
+    configs_to_build = []
+    for arch in docker_arch_list:
+        configs_to_build.extend([c for c in python_configurations if build_selector(c.identifier) and c.identifier.endswith(arch)])
+
+    return configs_to_build
 
 
 def build(options: BuildOptions) -> None:
@@ -91,7 +74,30 @@ def build(options: BuildOptions) -> None:
         exit(2)
 
     assert options.manylinux_images is not None
-    python_configurations = get_python_configurations(options.build_selector)
+
+    platmachine = platform.machine()
+    native_machines = [platmachine]
+    if platmachine == 'x86_64':
+        native_machines.append('i686')
+
+    docker_machines = options.docker_machine_arch.split()
+    if 'AUTO' in docker_machines:
+        docker_machines.remove('AUTO')
+        docker_machines.extend(native_machines)
+
+    python_configurations = get_python_configurations(options.build_selector, docker_machines)
+
+    # if cross-run is required, install qemu-use-static
+    if any([machine not in native_machines for machine in docker_machines]):
+        subprocess.run(
+            [
+                'docker', 'run', '--rm', '--privileged',
+                'multiarch/qemu-user-static', '--reset',
+                '-p', 'yes'
+            ],
+            check=True,
+        )
+
     platforms = [
         ('cp', 'manylinux_x86_64', options.manylinux_images['x86_64']),
         ('cp', 'manylinux_i686', options.manylinux_images['i686']),
